@@ -4,5 +4,5 @@ This is definitely my silliest project so far.
 
 # Usage
 - Clone the repo and install the dependencies stored on `requirements`
-- `python main.py > output_file.jpg`
+- `python main.py` (this generates a file called `out.jpg`)
 - Enjoy...I think
