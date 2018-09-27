@@ -1,5 +1,5 @@
 from lxml import html
-from random import random
+from random import random, choice
 from PIL import Image, ImageDraw, ImageFont
 import requests
 import textwrap
@@ -20,15 +20,15 @@ class Quoter():
                   "http://www.imdb.com/title/tt0091763/quotes" #Platoon
                   ]
 
-        movie = int(random() * len(movies))
-        print("CHOSEN MOVIE\n%s\n====\n" % movies[movie])
-        self.base_url = movies[movie]
+        movie = choice(movies)
+        print("CHOSEN MOVIE\n%s\n====\n" % movie)
+        self.base_url = movie
 
     def get(self):
         page = requests.get(self.base_url)
         tree = html.fromstring(page.content)
         quotes = tree.xpath("//div[contains(@class, 'sodatext')]")
-        quote = quotes[int(random() * len(quotes))]
+        quote = choice(quotes)
 
         if _dbg_flag:
             print("TEXT\n%s\n====\n" % quote.text_content())
@@ -79,12 +79,15 @@ class Writer():
         return "%sF%s" % (season, chap)
 
     def get_picture(self):
-        #try:
-        url = "http://homerize.com/_framegrabs/%s/" % self.get_dir()
-        page = requests.get(url)
-        tree = html.fromstring(page.content)
-        links = tree.xpath("//a")
-        chosen = links[1 + int(random() * len(links))]
+        links = []
+
+        while len(links) == 0:
+            url = "http://homerize.com/_framegrabs/%s/" % self.get_dir()
+            page = requests.get(url)
+            tree = html.fromstring(page.content)
+            links = tree.xpath("//a")
+
+        chosen = choice(links)
         img = chosen.text_content().replace(" ", "")
 
         if _dbg_flag:
