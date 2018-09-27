@@ -4,12 +4,14 @@ from PIL import Image, ImageDraw, ImageFont
 import requests
 import textwrap
 import shutil
+import os
 
 
 _dbg_flag = True
 
 class Quoter():
     def __init__(self):
+        # You can edit this array and add more movies, just search their quotes page from IMDB
         movies = ["http://www.imdb.com/title/tt0120737/quotes", #Lord Of The Rings
                   "http://www.imdb.com/title/tt0121955/quotes", #South Park
                   "http://www.imdb.com/title/tt0068646/quotes", #Godfather
@@ -19,7 +21,7 @@ class Quoter():
                   ]
 
         movie = int(random() * len(movies))
-        print "CHOSEN MOVIE", movie
+        print("CHOSEN MOVIE\n%s\n====\n" % movies[movie])
         self.base_url = movies[movie]
 
     def get(self):
@@ -29,9 +31,7 @@ class Quoter():
         quote = quotes[int(random() * len(quotes))]
 
         if _dbg_flag:
-            print "TEXT"
-            print quote.text_content()
-            print "===="
+            print("TEXT\n%s\n====\n" % quote.text_content())
 
         paras = quote.findall("p")
         parsed_text = ""
@@ -46,19 +46,17 @@ class Quoter():
                                                         .replace(":", ""))
 
                 if _dbg_flag:
-                    print "WRAP"
-                    print pre_text
-                    print textwrap.wrap(pre_text, 60)
-                    print "===="
+                    print("WRAP\n")
+                    print(pre_text)
+                    print(textwrap.wrap(pre_text, 60))
+                    print("====\n")
 
                 for text_line in textwrap.wrap(pre_text, 60):
                     parsed_text += text_line + "\n"
                     total_lines -= 1
 
         if _dbg_flag:
-            print "PARSED TEXT"
-            print parsed_text
-            print "==========="
+            print("PARSED TEXT\n%s\n====\n" % parsed_text)
 
         return parsed_text
 
@@ -83,11 +81,6 @@ class Writer():
     def get_picture(self):
         #try:
         url = "http://homerize.com/_framegrabs/%s/" % self.get_dir()
-
-        if _dbg_flag:
-            print "FETCHING"
-            print url
-
         page = requests.get(url)
         tree = html.fromstring(page.content)
         links = tree.xpath("//a")
@@ -95,10 +88,10 @@ class Writer():
         img = chosen.text_content().replace(" ", "")
 
         if _dbg_flag:
-            print "Fetching image:"
-            print url + img
+            print("FETCHING\n%s\n====\n" % (url + img))
 
         req = requests.get(url + img, stream=True)
+
         with open("test.jpg", 'wb') as img_file:
             for chunk in req:
                 img_file.write(chunk)
@@ -116,13 +109,12 @@ class Writer():
         w, h = draw.textsize(self.quote, fnt)
 
         if _dbg_flag:
-            print "Size of IMG, size of TXT"
-            print W, H
-            print w, h
+            print("Size of IMG, size of TXT\n%s %s\n%s %s\n====\n" % (W, H ,w ,h))
 
         draw.text(( (W-w)/2+2, (H-h-50)+2), self.quote, (0, 0, 0), font=fnt, align="center", spacing=15)
         draw.text(( (W-w)/2, (H-h-50)), self.quote, (255, 255, 255), font=fnt, align="center", spacing=15)
         big.save("out.jpg")
+        os.remove("test.jpg")
 
 
 
@@ -131,4 +123,4 @@ if __name__ == '__main__':
     W = Writer()
     W.get_picture()
     W.save_picture()
-    print "Done"
+    print("DONE")
