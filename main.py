@@ -68,7 +68,7 @@ class Imager():
   tmp_filename = "temp.jpg"
   result_filename = "out.jpg"
   # TODO first grab a link from https://homerize.com/_framegrabs/ then parse <imgs>
-  images_url = "http://homerize.com/_framegrabs/%s/"
+  images_url = "http://homerize.com/_framegrabs/"
 
   def __init__(self):
     pass
@@ -78,21 +78,18 @@ class Imager():
     Get a random dir from homerize.com
     :returns: string with the dir
     '''
-    season = 1 + int(random() * 9)
-    chap = 1 + int(random() * 10)
-
-    if chap < 10:
-        chap = "0%s" % chap
-
-    return "%sF%s" % (season, chap)
+    page = requests.get(self.images_url)
+    document = BeautifulSoup(page.content, features="html.parser")
+    links = document.find_all('a')[4:]
+    return choice(links).text
 
   def get_picture(self):
     '''
     Gets a random image from homerize and saves as the tmp file
     '''
-    url = self.images_url % self.get_dir()
-    page = requests.get(url)
+    url = "%s%s" % (self.images_url, self.get_dir())
     print("> URL with images:\n%s\n" % url)
+    page = requests.get(url)
     document = BeautifulSoup(page.content, features="html.parser")
     imgs = document.find_all('img')
     img = choice(imgs)
