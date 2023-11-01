@@ -1,129 +1,128 @@
-from lxml import html
-from random import random, choice
-from PIL import Image, ImageDraw, ImageFont
-import requests
-import textwrap
-import shutil
 import os
-
-
-_dbg_flag = True
+from random import random, choice
+import textwrap
+from bs4 import BeautifulSoup
+from PIL import Image, ImageFont, ImageDraw
+import requests
+import ipdb
 
 class Quoter():
-    def __init__(self):
-        # You can edit this array and add more movies, just search their quotes page from IMDB
-        movies = ["http://www.imdb.com/title/tt0120737/quotes", #Lord Of The Rings
-                  "http://www.imdb.com/title/tt0121955/quotes", #South Park
-                  "http://www.imdb.com/title/tt0068646/quotes", #Godfather
-                  "http://www.imdb.com/title/tt0078748/quotes", #Alien
-                  "http://www.imdb.com/title/tt0087332/quotes", #Ghostbusters
-                  "http://www.imdb.com/title/tt0091763/quotes" #Platoon
-                  ]
+  wrap_size = 60
+  # You can edit this array and add more movies, just search their quotes page from IMDB
+  movies = [
+            "tt0120737", #Lord Of The Rings
+            "tt0121955", #South Park
+            "tt0068646", #Godfather
+            "tt0078748", #Alien
+            "tt0087332", #Ghostbusters
+            "tt0091763" #Platoon
+            ]
+    
+  def __init__(self):
+    pass
 
-        movie = choice(movies)
-        print("CHOSEN MOVIE\n%s\n====\n" % movie)
-        self.base_url = movie
+  def get_movie_url(self):
+    '''
+    Gets a random IDB page from the list
+    '''
+    movie = "http://www.imdb.com/title/%s/quotes" % choice(self.movies)
+    print("> Chosen movie:\n%s\n" % movie)
+    return movie
 
-    def get(self):
-        page = requests.get(self.base_url)
-        tree = html.fromstring(page.content)
-        quotes = tree.xpath("//div[contains(@class, 'sodatext')]")
-        quote = choice(quotes)
+  def get(self) -> str:
+    '''
+    Gets a random quote from IMDB a page.
+    returns: a string with the quote
+    '''
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36'}
+    page = requests.get(self.get_movie_url(), headers=headers)
+    document = BeautifulSoup(page.content, features="html.parser")
+    quotes = document.find_all('div', {'class', 'ipc-html-content-inner-div'})
+    lines = choice(quotes).find_all('li')
+    text = ""
+    print("> Detected text:")
 
-        if _dbg_flag:
-            print("TEXT\n%s\n====\n" % quote.text_content())
+    for line in lines:
+      char = ""
+      a = line.find("a")
+      print(line.text)
 
-        paras = quote.findall("p")
-        parsed_text = ""
-        total_lines = 5
+      if a is not None:
+        char = "%s:" % a.text
+        line = line.text.replace(char, "-")
+      else:
+        line = line.text
 
-        for para in paras:
-            if para.find("a") is not None and total_lines > 0:
-                character = para.find("a").text_content()
-                pre_text = "- %s\n" % (para.text_content()
-                                                        .replace("\n", "")
-                                                        .replace(character, "")
-                                                        .replace(":", ""))
+      para = textwrap.wrap(line, self.wrap_size)
 
-                if _dbg_flag:
-                    print("WRAP\n")
-                    print(pre_text)
-                    print(textwrap.wrap(pre_text, 60))
-                    print("====\n")
+      for para_line in para:
+        text +=  "%s\n" % para_line
 
-                for text_line in textwrap.wrap(pre_text, 60):
-                    parsed_text += text_line + "\n"
-                    total_lines -= 1
+    print("\n> Parsed text:\n%s" % text)
+    return text
+    
+class Imager():
+  W = 1024
+  H = 768
+  d = 2
+  tmp_filename = "temp.jpg"
+  result_filename = "out.jpg"
+  # TODO first grab a link from https://homerize.com/_framegrabs/ then parse <imgs>
+  images_url = "http://homerize.com/_framegrabs/%s/"
 
-        if _dbg_flag:
-            print("PARSED TEXT\n%s\n====\n" % parsed_text)
+  def __init__(self):
+    pass
 
-        return parsed_text
+  def get_dir(self):
+    '''
+    Get a random dir from homerize.com
+    :returns: string with the dir
+    '''
+    season = 1 + int(random() * 9)
+    chap = 1 + int(random() * 10)
 
+    if chap < 10:
+        chap = "0%s" % chap
 
+    return "%sF%s" % (season, chap)
 
-class Writer():
-    def __init__(self):
-        self.img = None
-        self.quote = None
-        self._quoter = Quoter()
+  def get_picture(self):
+    '''
+    Gets a random image from homerize and saves as the tmp file
+    '''
+    url = self.images_url % self.get_dir()
+    page = requests.get(url)
+    print("> URL with images:\n%s\n" % url)
+    document = BeautifulSoup(page.content, features="html.parser")
+    imgs = document.find_all('img')
+    img = choice(imgs)
+    print("> Chosen image:\n%s%s\n" % (url, img.attrs['src']))
+    req = requests.get("%s%s" % (url, img.attrs['src']), stream=True)
 
-    def get_dir(self):
-        #check seasons/chap numbers
-        season = 1 + int(random() * 9)
-        chap = 1 + int(random() * 10)
+    with open(self.tmp_filename, 'wb') as img_file:
+      for chunk in req:
+        img_file.write(chunk)
 
-        if chap < 10:
-            chap = "0%s" % chap
-
-        return "%sF%s" % (season, chap)
-
-    def get_picture(self):
-        links = []
-
-        while len(links) == 0:
-            url = "http://homerize.com/_framegrabs/%s/" % self.get_dir()
-            page = requests.get(url)
-            tree = html.fromstring(page.content)
-            links = tree.xpath("//a")
-
-        chosen = choice(links)
-        img = chosen.text_content().replace(" ", "")
-
-        if _dbg_flag:
-            print("FETCHING\n%s\n====\n" % (url + img))
-
-        req = requests.get(url + img, stream=True)
-
-        with open("test.jpg", 'wb') as img_file:
-            for chunk in req:
-                img_file.write(chunk)
-
-        self.img = Image.open("test.jpg")
-        self.quote = self._quoter.get()
-        #except:
-            #raise BaseException("FUCK this url:%s", url)
-
-    def save_picture(self):
-        W, H = (1024, 768)
-        big = self.img.resize((W, H))
-        draw = ImageDraw.Draw(big)
-        fnt = ImageFont.truetype('font.ttf', 26)
-        w, h = draw.textsize(self.quote, fnt)
-
-        if _dbg_flag:
-            print("Size of IMG, size of TXT\n%s %s\n%s %s\n====\n" % (W, H ,w ,h))
-
-        draw.text(( (W-w)/2+2, (H-h-50)+2), self.quote, (0, 0, 0), font=fnt, align="center", spacing=15)
-        draw.text(( (W-w)/2, (H-h-50)), self.quote, (255, 255, 255), font=fnt, align="center", spacing=15)
-        big.save("out.jpg")
-        os.remove("test.jpg")
-
+  def write_quote(self, quote):
+    '''
+    Draws a quote on the temp.jpg image
+    '''
+    image = Image.open(self.tmp_filename)
+    font = ImageFont.truetype('font.ttf', 26)
+    big = image.resize((self.W, self.H))
+    draw = ImageDraw.Draw(big)
+    #import ipdb; ipdb.set_trace()
+    draw.text((self.W / 2 + 2, self.H - 2 + 2), quote, font=font, anchor="md", fill=(0 ,0, 0), spacing=15)
+    draw.text((self.W / 2, self.H - 2), quote, font=font, anchor="md", fill=(255, 255, 255), spacing=15)
+    big.save(self.result_filename, "JPEG")
+    os.remove(self.tmp_filename)
 
 
 
 if __name__ == '__main__':
-    W = Writer()
-    W.get_picture()
-    W.save_picture()
-    print("DONE")
+  Q = Quoter()
+  I = Imager()
+  quote = Q.get()
+  I.get_picture()
+  I.write_quote(quote)
+  print("> Done")
